@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置 — 岗位筛选</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:-apple-system,"PingFang SC","SF Pro Display","Helvetica Neue",sans-serif;
+    background:#f5f5f7;color:#1d1d1f;min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+}
+.navbar{
+    position:sticky;top:0;z-index:100;
+    background:rgba(245,245,247,0.72);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:0.5px solid rgba(0,0,0,0.08);
+    padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
+}
+.navbar .logo{font-size:18px;font-weight:700;letter-spacing:-0.3px;color:#1d1d1f;}
+.nav-btn{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500;color:#1d1d1f;
+    background:rgba(0,0,0,0.04);border:none;cursor:pointer;text-decoration:none;
+    transition:background 0.2s;
+}
+.nav-btn:hover{background:rgba(0,0,0,0.08);}
+.page{max-width:640px;margin:0 auto;padding:24px;}
+.card{
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border-radius:16px;border:0.5px solid rgba(0,0,0,0.06);
+    padding:24px;margin-bottom:16px;
+}
+.card h3{font-size:16px;font-weight:700;margin-bottom:12px;}
+.card p,.card li,.card .row{font-size:13px;color:#6e6e73;line-height:1.7;}
+.card ol{padding-left:18px;}
+.card code{
+    background:rgba(0,0,0,0.05);padding:2px 6px;border-radius:4px;
+    font-size:12px;font-family:"SF Mono","Menlo",monospace;
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="logo">设置</div>
+    <a href="/" class="nav-btn">← 返回列表</a>
+</nav>
+
+<div class="page">
+    <div class="card">
+        <h3>👤 用户画像</h3>
+        <div id="profile">加载中...</div>
+        <button class="nav-btn" onclick="loadProfile()" style="margin-top:12px;">刷新画像</button>
+    </div>
+    <div class="card">
+        <h3>📊 数据统计</h3>
+        <div id="stats">加载中...</div>
+    </div>
+    <div class="card">
+        <h3>📖 使用说明</h3>
+        <ol>
+            <li><strong>爬取数据</strong>：终端运行 <code>python3 run_scraper.py</code></li>
+            <li><strong>测试数据</strong>：运行 <code>python3 inject_test_data.py</code></li>
+            <li><strong>修改偏好</strong>：编辑 <code>config.yaml</code></li>
+            <li><strong>更新简历</strong>：将最新 PDF 放入 <code>resume/</code> 目录</li>
+            <li><strong>定时任务</strong>：运行 <code>python3 setup_scheduler.py install</code></li>
+        </ol>
+    </div>
+</div>
+
+<script>
+async function loadProfile(){
+    try{
+        const r=await fetch('/api/profile');
+        const p=await r.json();
+        document.getElementById('profile').innerHTML=
+            '<div class="row">'+
+            '<strong>学历：</strong>'+p.highest_degree+'<br>'+
+            '<strong>毕业年份：</strong>'+(p.graduation_year||'-')+'<br>'+
+            '<strong>院校：</strong>'+(p.schools||[]).join('、')+'<br>'+
+            '<strong>专业：</strong>'+(p.majors||[]).join('、')+'<br>'+
+            '<strong>求职意向：</strong>'+(p.target_positions||[]).join('、')+'<br>'+
+            '<strong>硬技能：</strong>'+(p.hard_skills||[]).join('、')+'<br>'+
+            '<strong>软技能：</strong>'+(p.soft_skills||[]).join('、')+
+            '</div>';
+    }catch(e){
+        document.getElementById('profile').innerHTML='<p style="color:#ff3b30;">加载失败，请确认简历PDF已放入 resume/ 目录</p>';
+    }
+}
+async function loadStats(){
+    try{
+        const r=await fetch('/api/stats');
+        const s=await r.json();
+        document.getElementById('stats').innerHTML=
+            '<p>有效岗位：<strong>'+s.total+'</strong></p>'+
+            '<p>按类型：'+JSON.stringify(s.by_type)+'</p>'+
+            '<p>按优先级：'+JSON.stringify(s.by_priority)+'</p>'+
+            '<p>按状态：'+JSON.stringify(s.by_status)+'</p>';
+    }catch(e){}
+}
+loadProfile();loadStats();
+</script>
+</body>
+</html>

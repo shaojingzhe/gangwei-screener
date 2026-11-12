@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>岗位筛选</title>
+<style>
+/* ====== Apple Style Reset & Base ====== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, "PingFang SC", "SF Pro Display", "Helvetica Neue", sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ====== Navbar — 毛玻璃 ====== */
+.navbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(245,245,247,0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 0.5px solid rgba(0,0,0,0.08);
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.navbar .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; color: #1d1d1f; }
+.navbar .stats { font-size: 13px; color: #86868b; }
+.navbar .stats strong { color: #1d1d1f; font-weight: 600; }
+.nav-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 500; color: #1d1d1f;
+    background: rgba(0,0,0,0.04);
+    border: none; cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+}
+.nav-btn:hover { background: rgba(0,0,0,0.08); }
+
+/* ====== Test Mode Banner ====== */
+.test-banner {
+    background: rgba(0,113,227,0.08);
+    border-bottom: 0.5px solid rgba(0,113,227,0.15);
+    padding: 8px 24px;
+    font-size: 12px; color: #0066cc; text-align: center;
+}
+.test-banner code {
+    background: rgba(0,113,227,0.1); padding: 1px 6px; border-radius: 4px;
+    font-size: 11px; font-family: "SF Mono", "Menlo", monospace;
+}
+
+/* ====== Difficulty Stars ====== */
+.diff-stars { font-size: 11px; letter-spacing: 1px; margin-top: 2px; }
+
+/* ====== Filter Bar ====== */
+.filter-bar {
+    padding: 20px 24px 12px;
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+}
+.filter-bar input,
+.filter-bar select {
+    height: 34px; padding: 0 12px;
+    border: 0.5px solid rgba(0,0,0,0.12);
+    border-radius: 10px; outline: none;
+    font-size: 13px; font-family: inherit;
+    color: #1d1d1f; background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.filter-bar input:focus,
+.filter-bar select:focus {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 3px rgba(0,113,227,0.12);
+}
+.filter-bar input { width: 160px; }
+.filter-bar select { width: 130px; cursor: pointer; }
+.filter-bar input::placeholder { color: #aeaeb2; }
+
+/* ====== Job List ====== */
+.job-list { padding: 0 24px 24px; max-width: 900px; }
+.job-card {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 20px; margin-bottom: 8px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 0.5px solid rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.job-card:hover {
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    transform: translateY(-1px);
+}
+/* 左侧优先级色条 */
+.job-card::before {
+    content: '';
+    width: 4px; height: 48px; border-radius: 2px; flex-shrink: 0;
+    background: #d2d2d7;
+}
+.job-card.priority-high::before { background: #30d158; }
+.job-card.priority-recommend::before { background: #0071e3; }
+.job-card.priority-consider::before { background: #ff9f0a; }
+.job-card.priority-low::before { background: #aeaeb2; }
+
+.job-card .info { flex: 1; min-width: 0; }
+.job-card .title {
+    font-size: 15px; font-weight: 600; letter-spacing: -0.2px;
+    color: #1d1d1f; margin-bottom: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.job-card .company { font-size: 13px; color: #6e6e73; }
+.job-card .meta { font-size: 12px; color: #aeaeb2; margin-top: 2px; }
+.job-card .meta span { margin-right: 10px; }
+
+.job-card .right { text-align: right; flex-shrink: 0; }
+.job-card .score {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.5px; line-height: 1;
+}
+.job-card .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; margin-top: 4px;
+}
+.tag-green { color: #248a3d; background: rgba(48,209,88,0.15); }
+.tag-blue { color: #0066cc; background: rgba(0,113,227,0.12); }
+.tag-orange { color: #b46400; background: rgba(255,159,10,0.15); }
+.tag-gray { color: #6e6e73; background: rgba(0,0,0,0.06); }
+.job-card .status-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    margin-top: 4px;
+}
+.dot-new { background: #0071e3; }
+.dot-todo { background: #ff9f0a; }
+.dot-applied { background: #30d158; }
+.dot-interview { background: #bf5af2; }
+.dot-done { background: #aeaeb2; }
+
+/* ====== States ====== */
+.empty-state, .loading-state {
+    text-align: center; padding: 60px 24px; color: #aeaeb2;
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+.loading-state .spinner {
+    width: 28px; height: 28px; margin: 0 auto 12px;
+    border: 2.5px solid rgba(0,0,0,0.08); border-top-color: #0071e3;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ====== Modal — 毛玻璃 ====== */
+.modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-radius: 20px; border: 0.5px solid rgba(0,0,0,0.08);
+    width: 720px; max-width: 94vw; max-height: 85vh; overflow-y: auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+    animation: modalIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px 12px;
+    border-bottom: 0.5px solid rgba(0,0,0,0.06);
+}
+.modal-header h2 {
+    font-size: 19px; font-weight: 700; letter-spacing: -0.3px;
+}
+.modal-close {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: rgba(0,0,0,0.06); font-size: 16px; cursor: pointer;
+    color: #6e6e73; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { background: rgba(0,0,0,0.12); color: #1d1d1f; }
+.modal-body { padding: 20px 24px; }
+.modal-body .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.modal-body .badge-row .b {
+    padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 500;
+}
+.b-type { color: #1d1d1f; background: rgba(0,0,0,0.05); }
+.b-city { color: #0066cc; background: rgba(0,113,227,0.1); }
+.b-salary { color: #248a3d; background: rgba(48,209,88,0.12); }
+.b-source { color: #6e6e73; background: rgba(0,0,0,0.04); }
+.modal-body .section-title {
+    font-size: 13px; font-weight: 700; color: #6e6e73; text-transform: uppercase;
+    letter-spacing: 0.5px; margin: 18px 0 8px;
+}
+.modal-body .section-text {
+    font-size: 14px; line-height: 1.7; color: #3a3a3c;
+    white-space: pre-line;
+}
+.modal-body .apply-btn {
+    display: block; width: 100%; padding: 12px; margin-top: 20px;
+    background: #0071e3; color: #fff; font-size: 15px; font-weight: 600;
+    border: none; border-radius: 12px; cursor: pointer;
+    text-align: center; text-decoration: none;
+    transition: background 0.2s;
+}
+.modal-body .apply-btn:hover { background: #0077ed; }
+
+/* Sidebar in modal */
+.modal-sidebar {
+    background: rgba(0,0,0,0.025);
+    border-radius: 14px; padding: 16px;
+    margin-bottom: 16px;
+}
+.modal-sidebar .score-big {
+    font-size: 48px; font-weight: 700; letter-spacing: -1px; line-height: 1;
+}
+.modal-sidebar .advice-text {
+    font-size: 13px; line-height: 1.6; color: #3a3a3c;
+    white-space: pre-line;
+}
+.modal-sidebar select {
+    width: 100%; height: 36px; padding: 0 12px; margin-top: 12px;
+    border-radius: 10px; border: 0.5px solid rgba(0,0,0,0.12);
+    font-size: 13px; font-family: inherit; background: #fff; cursor: pointer;
+}
+
+/* ====== Settings Page ====== */
+.settings-page { max-width: 640px; margin: 0 auto; padding: 24px; }
+.settings-card {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 16px; border: 0.5px solid rgba(0,0,0,0.06);
+    padding: 24px; margin-bottom: 16px;
+}
+.settings-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.settings-card p, .settings-card li { font-size: 13px; color: #6e6e73; line-height: 1.7; }
+.settings-card ol { padding-left: 18px; }
+.settings-card code {
+    background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px;
+    font-size: 12px; font-family: "SF Mono", "Menlo", monospace;
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 640px) {
+    .filter-bar { flex-direction: column; }
+    .filter-bar input, .filter-bar select { width: 100%; }
+    .job-card .right { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ====== Navbar ====== -->
+<nav class="navbar">
+    <div class="logo">岗位筛选</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <span class="stats" id="statsBadge">加载中...</span>
+        <a href="/settings" class="nav-btn">设置</a>
+    </div>
+</nav>
+
+<!-- ====== Test Mode Banner ====== -->
+<div class="test-banner">
+    ⚠️ 当前为测试数据模式 | 真实爬取需运行 <code>python3 run_scraper.py</code>
+</div>
+
+<!-- ====== Filter Bar ====== -->
+<div class="filter-bar">
+    <input type="text" id="fTitle" placeholder="搜索岗位..." oninput="debounceSearch()">
+    <input type="text" id="fCity" placeholder="城市..." oninput="debounceSearch()">
+    <select id="fType" onchange="doSearch()">
+        <option value="">全部企业</option>
+        <option value="央国企">央国企</option>
+        <option value="外企">外企</option>
+        <option value="民企">民企</option>
+    </select>
+    <select id="fPriority" onchange="doSearch()">
+        <option value="">全部优先级</option>
+        <option value="强烈推荐">强烈推荐</option>
+        <option value="推荐投递">推荐投递</option>
+        <option value="可以考虑">可以考虑</option>
+        <option value="仅供参考">仅供参考</option>
+    </select>
+    <select id="fDifficulty" onchange="doSearch()">
+        <option value="">全部难度</option>
+        <option value="容易">⭐ 容易</option>
+        <option value="适中">⭐⭐ 适中</option>
+        <option value="挑战">⭐⭐⭐ 挑战</option>
+        <option value="冲刺">⭐⭐⭐⭐ 冲刺</option>
+    </select>
+    <select id="fStatus" onchange="doSearch()">
+        <option value="">全部状态</option>
+        <option value="新岗位">新岗位</option>
+        <option value="待投递">待投递</option>
+        <option value="已投递">已投递</option>
+        <option value="面试中">面试中</option>
+        <option value="已结束">已结束</option>
+    </select>
+    <select id="fSort" onchange="doSearch()">
+        <option value="score DESC">匹配度 ↓</option>
+        <option value="publish_date DESC">发布日期 ↓</option>
+        <option value="company ASC">公司名 ↑</option>
+    </select>
+</div>
+
+<!-- ====== Content ====== -->
+<div class="job-list" id="jobList"></div>
+
+<!-- Loading -->
+<div class="loading-state" id="loading">
+    <div class="spinner"></div>
+    <p>加载中...</p>
+</div>
+
+<!-- Empty -->
+<div class="empty-state" id="empty" style="display:none;">
+    <div class="icon">&middot;&middot;&middot;</div>
+    <p>暂无符合条件的岗位</p>
+    <p style="font-size:12px;margin-top:6px;">运行 python3 inject_test_data.py 注入测试数据</p>
+</div>
+
+<!-- ====== Detail Modal ====== -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-content" id="modalContent"></div>
+</div>
+
+<!-- ====== All JavaScript Inline ====== -->
+<script>
+// ====== State ======
+let allJobs = [];
+let currentJob = null;
+
+const PRIORITY_CLASS = {
+    '强烈推荐':'priority-high', '推荐投递':'priority-recommend',
+    '可以考虑':'priority-consider', '仅供参考':'priority-low'
+};
+const TAG_CLASS = {
+    '强烈推荐':'tag-green', '推荐投递':'tag-blue',
+    '可以考虑':'tag-orange', '仅供参考':'tag-gray'
+};
+const DOT_CLASS = {
+    '新岗位':'dot-new', '待投递':'dot-todo', '已投递':'dot-applied',
+    '面试中':'dot-interview', '已结束':'dot-done'
+};
+const SCORE_COLOR = s => s>=75?'#30d158':s>=55?'#0071e3':s>=40?'#ff9f0a':'#aeaeb2';
+const DIFF_STARS = {'容易':'⭐','适中':'⭐⭐','挑战':'⭐⭐⭐','冲刺':'⭐⭐⭐⭐'};
+
+// ====== API ======
+async function api(path, opts) {
+    const r = await fetch(path, opts);
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+}
+
+// ====== Search & Load ======
+function getFilters() {
+    return {
+        title: document.getElementById('fTitle').value.trim(),
+        city: document.getElementById('fCity').value.trim(),
+        company_type: document.getElementById('fType').value,
+        priority: document.getElementById('fPriority').value,
+        difficulty: document.getElementById('fDifficulty').value,
+        status: document.getElementById('fStatus').value,
+        order_by: document.getElementById('fSort').value,
+    };
+}
+
+function buildQS(f) {
+    const p = new URLSearchParams();
+    for (const [k,v] of Object.entries(f)) if (v) p.set(k, v);
+    return p.toString();
+}
+
+let searchTimer = null;
+function debounceSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearch, 300);
+}
+
+async function doSearch() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('empty').style.display = 'none';
+    document.getElementById('jobList').innerHTML = '';
+
+    try {
+        const data = await api('/api/jobs?' + buildQS(getFilters()));
+        allJobs = data.jobs || [];
+        renderJobs(allJobs);
+    } catch(e) {
+        document.getElementById('jobList').innerHTML =
+            '<div class="empty-state"><p style="color:#ff3b30;">加载失败，请确认服务已启动</p></div>';
+    }
+    document.getElementById('loading').style.display = 'none';
+}
+
+// ====== Render ======
+function renderJobs(jobs) {
+    const list = document.getElementById('jobList');
+    if (!jobs.length) {
+        document.getElementById('empty').style.display = 'block';
+        return;
+    }
+    document.getElementById('empty').style.display = 'none';
+
+    for (const j of jobs) {
+        const card = document.createElement('div');
+        const pc = PRIORITY_CLASS[j.priority_level] || 'priority-low';
+        card.className = 'job-card ' + pc;
+        card.onclick = () => openModal(j);
+
+        const score = j.score || 0;
+        const tagCls = TAG_CLASS[j.priority_level] || 'tag-gray';
+        const dotCls = DOT_CLASS[j.status] || 'dot-new';
+
+        card.innerHTML =
+            '<div class="info">' +
+                '<div class="title">' + esc(j.title) + '</div>' +
+                '<div class="company">' + esc(j.company) + '</div>' +
+                '<div class="meta">' +
+                    '<span>' + (j.city || '城市不限') + '</span>' +
+                    '<span>' + (j.salary || '薪资面议') + '</span>' +
+                    '<span>' + (j.publish_date || '') + '</span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="right">' +
+                '<div class="score" style="color:' + SCORE_COLOR(score) + '">' + score + '</div>' +
+                '<div style="font-size:11px;color:#aeaeb2;">分</div>' +
+                '<div class="tag ' + tagCls + '">' + (j.priority_level || '参考') + '</div>' +
+                '<div class="diff-stars" title="竞争难度">' + (DIFF_STARS[j.difficulty_label] || '') + '</div>' +
+                '<div class="status-dot ' + dotCls + '" title="' + (j.status||'新岗位') + '"></div>' +
+            '</div>';
+        list.appendChild(card);
+    }
+}
+
+function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+// ====== Modal ======
+function openModal(job) {
+    currentJob = job;
+    const score = job.score || 0;
+    const dotCls = DOT_CLASS[job.status] || 'dot-new';
+    const tagCls = TAG_CLASS[job.priority_level] || 'tag-gray';
+
+    document.getElementById('modalContent').innerHTML =
+        '<div class="modal-header">' +
+            '<h2>' + esc(job.title) + '</h2>' +
+            '<button class="modal-close" onclick="closeModal()">✕</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+            '<div style="font-size:15px;font-weight:600;color:#1d1d1f;margin-bottom:4px;">' + esc(job.company) + '</div>' +
+            '<div class="badge-row">' +
+                '<span class="b b-type">' + (job.company_type||'其他') + '</span>' +
+                '<span class="b b-city">' + (job.city||'城市不限') + '</span>' +
+                '<span class="b b-salary">' + (job.salary||'薪资面议') + '</span>' +
+                '<span class="b b-source">来源: ' + (job.source||'') + '</span>' +
+            '</div>' +
+            '<div style="font-size:12px;color:#aeaeb2;margin-bottom:4px;">发布日期: ' + (job.publish_date||'未知') + '</div>' +
+
+            // Stats sidebar
+            '<div class="modal-sidebar">' +
+                '<div style="display:flex;align-items:center;gap:16px;">' +
+                    '<div class="score-big" style="color:' + SCORE_COLOR(score) + '">' + score + '</div>' +
+                    '<div>' +
+                        '<div style="font-size:11px;color:#aeaeb2;">匹配度评分</div>' +
+                        '<div class="tag ' + tagCls + '" style="margin-top:4px;">' + (job.priority_level||'参考') + '</div>' +
+                        '<div style="font-size:12px;color:#6e6e73;margin-top:4px;">竞争难度: ' + (DIFF_STARS[job.difficulty_label]||'--') + ' ' + (job.difficulty_label||'适中') + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<select onchange="updateStatus(' + job.id + ', this.value)">' +
+                    '<option value="新岗位"' + (job.status==='新岗位'?' selected':'') + '>📥 新岗位</option>' +
+                    '<option value="待投递"' + (job.status==='待投递'?' selected':'') + '>📝 待投递</option>' +
+                    '<option value="已投递"' + (job.status==='已投递'?' selected':'') + '>✉️ 已投递</option>' +
+                    '<option value="面试中"' + (job.status==='面试中'?' selected':'') + '>💬 面试中</option>' +
+                    '<option value="已结束"' + (job.status==='已结束'?' selected':'') + '>✅ 已结束</option>' +
+                '</select>' +
+            '</div>' +
+
+            // Advice
+            (job.advice ? '<div class="section-title">投递建议</div><div class="section-text advice-text">' + esc(job.advice).replace(/\n\n/g,'<br><br>') + '</div>' : '') +
+
+            // Description
+            (job.description ? '<div class="section-title">岗位描述</div><div class="section-text">' + esc(job.description) + '</div>' : '') +
+
+            // Requirements
+            (job.requirements ? '<div class="section-title">任职要求</div><div class="section-text">' + esc(job.requirements) + '</div>' : '') +
+
+            // Apply button
+            (job.apply_url ? '<a class="apply-btn" href="' + esc(job.apply_url) + '" target="_blank">前往投递 →</a>' : '') +
+        '</div>';
+
+    document.getElementById('modalOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+    currentJob = null;
+}
+
+async function updateStatus(jobId, newStatus) {
+    try {
+        await api('/api/jobs/' + jobId + '/status', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: newStatus})
+        });
+        // 更新内存中的数据
+        for (const j of allJobs) {
+            if (j.id === jobId) { j.status = newStatus; break; }
+        }
+        // 刷新列表
+        doSearch();
+    } catch(e) {
+        console.error('状态更新失败', e);
+    }
+}
+
+// ====== Stats ======
+async function updateStats() {
+    try {
+        const s = await api('/api/stats');
+        const el = document.getElementById('statsBadge');
+        if (el) el.innerHTML = '有效岗位: <strong>' + (s.total||0) + '</strong>';
+    } catch(e) {}
+}
+
+// ====== Init ======
+updateStats();
+doSearch();
+
+// 定时刷新统计
+setInterval(updateStats, 30000);
+
+// ESC 关闭弹窗
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

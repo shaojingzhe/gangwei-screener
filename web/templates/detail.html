@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>岗位详情</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:-apple-system,"PingFang SC","SF Pro Display","Helvetica Neue",sans-serif;
+    background:#f5f5f7;color:#1d1d1f;min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+}
+.navbar{
+    position:sticky;top:0;z-index:100;
+    background:rgba(245,245,247,0.72);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:0.5px solid rgba(0,0,0,0.08);
+    padding:12px 24px;display:flex;align-items:center;
+}
+.navbar a{
+    text-decoration:none;color:#1d1d1f;font-size:13px;font-weight:500;
+    padding:6px 14px;border-radius:20px;background:rgba(0,0,0,0.04);
+    transition:background 0.2s;
+}
+.navbar a:hover{background:rgba(0,0,0,0.08);}
+.page{max-width:800px;margin:0 auto;padding:24px;}
+.card{
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border-radius:16px;border:0.5px solid rgba(0,0,0,0.06);
+    padding:24px;margin-bottom:16px;
+}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;}
+.badges span{padding:3px 10px;border-radius:8px;font-size:12px;font-weight:500;}
+.b-type{background:rgba(0,0,0,0.05);color:#1d1d1f;}
+.b-city{background:rgba(0,113,227,0.1);color:#0066cc;}
+.b-salary{background:rgba(48,209,88,0.12);color:#248a3d;}
+.sec-title{font-size:13px;font-weight:700;color:#6e6e73;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px;}
+.sec-text{font-size:14px;line-height:1.7;color:#3a3a3c;white-space:pre-line;}
+.apply-btn{display:block;width:100%;padding:12px;margin-top:20px;background:#0071e3;color:#fff;font-size:15px;font-weight:600;border:none;border-radius:12px;cursor:pointer;text-align:center;text-decoration:none;}
+.apply-btn:hover{background:#0077ed;}
+.score-big{font-size:48px;font-weight:700;letter-spacing:-1px;}
+.tag{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;display:inline-block;}
+.tg-green{color:#248a3d;background:rgba(48,209,88,0.15);}
+.tg-blue{color:#0066cc;background:rgba(0,113,227,0.12);}
+.tg-orange{color:#b46400;background:rgba(255,159,10,0.15);}
+.tg-gray{color:#6e6e73;background:rgba(0,0,0,0.06);}
+select{width:100%;height:36px;padding:0 12px;margin-top:8px;border-radius:10px;border:0.5px solid rgba(0,0,0,0.12);font-size:13px;font-family:inherit;background:#fff;cursor:pointer;}
+.spinner{width:28px;height:28px;margin:60px auto;border:2.5px solid rgba(0,0,0,0.08);border-top-color:#0071e3;border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<nav class="navbar"><a href="/">← 返回列表</a></nav>
+<div class="page" id="content"><div class="spinner"></div></div>
+
+<script>
+const JID = {{ job_id }};
+(async ()=>{
+    try{
+        const r = await fetch('/api/jobs/'+JID);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error);
+        const score = j.score||0;
+        const sc = score>=75?'#30d158':score>=55?'#0071e3':score>=40?'#ff9f0a':'#aeaeb2';
+        const tc = j.priority_level==='强烈推荐'?'tg-green':j.priority_level==='推荐投递'?'tg-blue':j.priority_level==='可以考虑'?'tg-orange':'tg-gray';
+        document.getElementById('content').innerHTML =
+            '<div class="card">'+
+                '<h2 style="font-size:20px;font-weight:700;">'+esc(j.title)+'</h2>'+
+                '<p style="font-size:15px;color:#6e6e73;margin-top:4px;">'+esc(j.company)+'</p>'+
+                '<div class="badges">'+
+                    '<span class="b-type">'+(j.company_type||'其他')+'</span>'+
+                    '<span class="b-city">'+(j.city||'城市不限')+'</span>'+
+                    '<span class="b-salary">'+(j.salary||'薪资面议')+'</span>'+
+                '</div>'+
+                '<p style="font-size:12px;color:#aeaeb2;">发布日期: '+(j.publish_date||'未知')+' | 来源: '+(j.source||'')+'</p>'+
+            '</div>'+
+            '<div class="card">'+
+                '<div style="display:flex;align-items:center;gap:16px;">'+
+                    '<div class="score-big" style="color:'+sc+'">'+score+'</div>'+
+                    '<div><div style="font-size:11px;color:#aeaeb2;">匹配度评分</div>'+
+                    '<span class="tag '+tc+'">'+(j.priority_level||'参考')+'</span></div>'+
+                '</div>'+
+                '<select onchange="upd('+j.id+',this.value)">'+
+                    '<option value="新岗位"'+(j.status==='新岗位'?' selected':'')+'>📥 新岗位</option>'+
+                    '<option value="待投递"'+(j.status==='待投递'?' selected':'')+'>📝 待投递</option>'+
+                    '<option value="已投递"'+(j.status==='已投递'?' selected':'')+'>✉️ 已投递</option>'+
+                    '<option value="面试中"'+(j.status==='面试中'?' selected':'')+'>💬 面试中</option>'+
+                    '<option value="已结束"'+(j.status==='已结束'?' selected':'')+'>✅ 已结束</option>'+
+                '</select>'+
+            '</div>'+
+            (j.advice?'<div class="card"><div class="sec-title">投递建议</div><div class="sec-text">'+esc(j.advice).replace(/\n\n/g,'<br><br>')+'</div></div>':'')+
+            (j.description?'<div class="card"><div class="sec-title">岗位描述</div><div class="sec-text">'+esc(j.description)+'</div></div>':'')+
+            (j.requirements?'<div class="card"><div class="sec-title">任职要求</div><div class="sec-text">'+esc(j.requirements)+'</div></div>':'')+
+            (j.apply_url?'<a class="apply-btn" href="'+esc(j.apply_url)+'" target="_blank">前往投递 →</a>':'');
+    }catch(e){document.getElementById('content').innerHTML='<div class="card"><p style="color:#ff3b30;">加载失败</p></div>';}
+})();
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+async function upd(id,s){await fetch('/api/jobs/'+id+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})});}
+</script>
+</body>
+</html>
