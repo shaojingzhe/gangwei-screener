@@ -4,3 +4,4 @@ data/*.db
 data/*.db-*
 resume/*.pdf
 .DS_Store
+data/*.log
